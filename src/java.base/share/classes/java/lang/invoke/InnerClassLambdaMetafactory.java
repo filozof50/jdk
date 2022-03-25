@@ -43,6 +43,7 @@ import java.util.LinkedHashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.PropertyPermission;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import static java.lang.invoke.MethodHandleStatics.CLASSFILE_VERSION;
 import static java.lang.invoke.MethodHandles.Lookup.ClassOption.NESTMATE;
@@ -92,6 +93,9 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     private static final ProxyClassesDumper dumper;
 
     private static final boolean disableEagerInitialization;
+    private static final boolean stableLambdaName;
+
+    private static final int targetLengthForStableName;
 
     // condy to load implMethod from class data
     private static final ConstantDynamic implMethodCondy;
@@ -104,6 +108,11 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         final String disableEagerInitializationKey = "jdk.internal.lambda.disableEagerInitialization";
         disableEagerInitialization = GetBooleanAction.privilegedGetProperty(disableEagerInitializationKey);
 
+        final String stableLambdaNameKey = "jdk.internal.lambda.stableLambdaName";
+        stableLambdaName = GetBooleanAction.privilegedGetProperty(stableLambdaNameKey);
+
+        targetLengthForStableName = Long.toString(Long.MAX_VALUE, Character.MAX_RADIX).length();
+        
         // condy to load implMethod from class data
         MethodType classDataMType = methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class);
         Handle classDataBsm = new Handle(H_INVOKESTATIC, Type.getInternalName(MethodHandles.class), "classData",
@@ -179,7 +188,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         implMethodName = implInfo.getName();
         implMethodDesc = implInfo.getMethodType().toMethodDescriptorString();
         constructorType = factoryType.changeReturnType(Void.TYPE);
-        lambdaClassName = lambdaClassName(targetClass);
+        lambdaClassName = stableLambdaName ? stableLambdaClassName(targetClass) : lambdaClassName(targetClass);
         // If the target class invokes a protected method inherited from a
         // superclass in a different package, or does 'invokespecial', the
         // lambda class has no access to the resolved method. Instead, we need
@@ -204,14 +213,73 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     }
 
     private static String lambdaClassName(Class<?> targetClass) {
+        return createNameFromTargetClass(targetClass) + counter.incrementAndGet();
+    }
+
+    private static String createNameFromTargetClass(Class<?> targetClass) {
         String name = targetClass.getName();
         if (targetClass.isHidden()) {
             // use the original class name
             name = name.replace('/', '_');
         }
-        return name.replace('.', '/') + "$$Lambda$" + counter.incrementAndGet();
+        return name.replace('.', '/') + "$$Lambda$";
     }
 
+    private String hashCodeForStableName(String name) {
+        long h = 0;
+        int length = name.length();
+        for (int i = 0; i < length; i++) {
+            h = 31 * h + name.charAt(i);
+        }
+
+        StringBuilder stable = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
+
+        /*
+         * Sometimes, if calculated long value is not great enough, hashed value is less than 13 characters long, so we append 'a' in order to get stable length.
+         * This does not affect stability of the name, just it's length. We want all the hashed names to be of the same length.
+         */
+        while (stable.length() != targetLengthForStableName) {
+            stable.append('a');
+        }
+        return stable.toString();
+    }
+
+    private String getQualifiedSignature(MethodType type) {
+        StringJoiner sj = new StringJoiner(",", "(",
+                ")" + type.returnType().getName());
+        Class<?>[] ptypes = type.ptypes();
+        for (int i = 0; i < ptypes.length; i++) {
+            sj.add(ptypes[i].getName());
+        }
+        return sj.toString();
+    }
+
+    private String stableLambdaClassName(Class<?> targetClass) {
+        String name = createNameFromTargetClass(targetClass);
+
+        StringBuilder stableName = new StringBuilder().append(interfaceMethodName).append(getQualifiedSignature(factoryType)).append(getQualifiedSignature(interfaceMethodType)).
+                append(implementation.internalMemberName().toString()).append(getQualifiedSignature(dynamicMethodType));
+
+        for (Class<?> clazz : altInterfaces) {
+            stableName.append(clazz.getName());
+        }
+
+        for (MethodType method : altMethods) {
+            stableName.append(getQualifiedSignature(method));
+        }
+
+        StringBuilder s1 = new StringBuilder(), s2 = new StringBuilder();
+        int n = stableName.length();
+
+        for (int i = 0; i < n; i++) {
+            StringBuilder sb = (i % 2 == 0) ? s1 : s2;
+            sb.append(stableName.charAt(i));
+        }
+
+        name += hashCodeForStableName(s1.toString()) + hashCodeForStableName(s2.toString());
+
+        return name;
+    }
     /**
      * Build the CallSite. Generate a class file which implements the functional
      * interface, define the class, if there are no parameters create an instance
