@@ -225,7 +225,8 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         return name.replace('.', '/') + "$$Lambda$";
     }
 
-    private String hashCodeForStableName(String name) {
+    private String hashPartOfTheName(String name) {
+        char stableLengthAppendingCharacter = 'a';
         long h = 0;
         int length = name.length();
         for (int i = 0; i < length; i++) {
@@ -233,15 +234,60 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         }
 
         StringBuilder stable = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
+        int stablePartLength = stable.length();
 
-        /*
-         * Sometimes, if calculated long value is not great enough, hashed value is less than 13 characters long, so we append 'a' in order to get stable length.
-         * This does not affect stability of the name, just it's length. We want all the hashed names to be of the same length.
-         */
-        while (stable.length() != targetLengthForStableName) {
-            stable.append('a');
+        // We need to pad stable lambda name to the fixed size, so we append predefined character to the end of the stable name if needed.
+        // This does not affect stability of the name, just it's length. We want all the hashed names to be of the same length.
+        while (stablePartLength != targetLengthForStableName) {
+            stable.append(stableLengthAppendingCharacter);
+            stablePartLength++;
         }
+
         return stable.toString();
+    }
+
+    private String stableLambdaNameHashed(String name) {
+        int numberOfParts = 2;
+
+        StringBuilder part1 = new StringBuilder(), part2 = new StringBuilder(), sb;
+        int n = name.length();
+
+        for (int i = 0; i < n; i++) {
+            sb = (i % numberOfParts == 0) ? part1 : part2;
+            sb.append(name.charAt(i));
+        }
+
+        return hashPartOfTheName(part1.toString()) + hashPartOfTheName(part2.toString());
+    }
+
+    /**
+     * Creating stable name for lambda class.
+     * Parameters that are used to create stable name are the same ones that are used in
+     * @see java.lang.invoke.LambdaProxyClassArchive#addToArchive to store lambdas.
+     *
+     * @return a stable name for the created lambda class.
+     *
+     */
+    private String stableLambdaClassName(Class<?> targetClass) {
+        String name = createNameFromTargetClass(targetClass);
+
+        StringBuilder stableName = new StringBuilder().append(interfaceMethodName);
+        stableName.append(getQualifiedSignature(factoryType));
+        stableName.append(getQualifiedSignature(interfaceMethodType));
+        stableName.append(implementation.internalMemberName().toString());
+        stableName.append(getQualifiedSignature(dynamicMethodType));
+
+        for (Class<?> clazz : altInterfaces) {
+            stableName.append(clazz.getName());
+        }
+
+        for (MethodType method : altMethods) {
+            stableName.append(getQualifiedSignature(method));
+        }
+
+        name += stableLambdaNameHashed(stableName.toString());
+
+        return name;
     }
 
     private String getQualifiedSignature(MethodType type) {
@@ -254,32 +300,6 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         return sj.toString();
     }
 
-    private String stableLambdaClassName(Class<?> targetClass) {
-        String name = createNameFromTargetClass(targetClass);
-
-        StringBuilder stableName = new StringBuilder().append(interfaceMethodName).append(getQualifiedSignature(factoryType)).append(getQualifiedSignature(interfaceMethodType)).
-                append(implementation.internalMemberName().toString()).append(getQualifiedSignature(dynamicMethodType));
-
-        for (Class<?> clazz : altInterfaces) {
-            stableName.append(clazz.getName());
-        }
-
-        for (MethodType method : altMethods) {
-            stableName.append(getQualifiedSignature(method));
-        }
-
-        StringBuilder s1 = new StringBuilder(), s2 = new StringBuilder();
-        int n = stableName.length();
-
-        for (int i = 0; i < n; i++) {
-            StringBuilder sb = (i % 2 == 0) ? s1 : s2;
-            sb.append(stableName.charAt(i));
-        }
-
-        name += hashCodeForStableName(s1.toString()) + hashCodeForStableName(s2.toString());
-
-        return name;
-    }
     /**
      * Build the CallSite. Generate a class file which implements the functional
      * interface, define the class, if there are no parameters create an instance
