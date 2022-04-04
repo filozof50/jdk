@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.*;
 
 public class TestStableLambdaName {
+    private static final String serializedLambdasNamesFile = "stableLambdaNames.txt";
     private static final Set<String> names = new HashSet<>();
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
@@ -165,7 +166,7 @@ public class TestStableLambdaName {
 
     public static void main(String[] args) throws Throwable {
         Set<String> savedNames = new HashSet<>();
-        BufferedReader br = new BufferedReader(new FileReader("stableLambdaNames.txt"));
+        BufferedReader br = new BufferedReader(new FileReader(serializedLambdasNamesFile));
         for(String line; (line = br.readLine()) != null; ) {
             savedNames.add(line);
         }
