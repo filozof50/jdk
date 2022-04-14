@@ -225,8 +225,17 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         return name.replace('.', '/') + "$$Lambda$";
     }
 
-    private String hashPartOfTheName(String name) {
-        char stableLengthAppendingCharacter = 'a';
+    /**
+     * Calculate hash value of the given String in the same manner as the
+     * @see java.lang.StringUTF16#hashCode does with difference that hash value
+     * is long instead of int.
+     *
+     * @param name String for which method calculates hash value for
+     *
+     * @return a hash value for the given String
+     * */
+    private String fixedSizeStringHash(String name) {
+        char appendingCharacter = 'a';
         long h = 0;
         int length = name.length();
         for (int i = 0; i < length; i++) {
@@ -234,30 +243,32 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         }
 
         StringBuilder stable = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
-        int stablePartLength = stable.length();
+        int stableLength = stable.length();
 
         // We need to pad stable lambda name to the fixed size, so we append predefined character to the end of the stable name if needed.
         // This does not affect stability of the name, just it's length. We want all the hashed names to be of the same length.
-        while (stablePartLength != targetLengthForStableName) {
-            stable.append(stableLengthAppendingCharacter);
-            stablePartLength++;
+        while (stableLength != targetLengthForStableName) {
+            stable.append(appendingCharacter);
+            stableLength++;
         }
 
         return stable.toString();
     }
 
-    private String stableLambdaNameHashed(String name) {
-        int numberOfParts = 2;
-
-        StringBuilder part1 = new StringBuilder(), part2 = new StringBuilder(), sb;
+    private String stableLambdaNameHash(String name) {
+        StringBuilder []stringBuilders = new StringBuilder[]{new StringBuilder(), new StringBuilder()};
         int n = name.length();
 
         for (int i = 0; i < n; i++) {
-            sb = (i % numberOfParts == 0) ? part1 : part2;
-            sb.append(name.charAt(i));
+            stringBuilders[i % stringBuilders.length].append(name.charAt(i));
         }
 
-        return hashPartOfTheName(part1.toString()) + hashPartOfTheName(part2.toString());
+        StringBuilder stableNameHash = new StringBuilder();
+        for (StringBuilder sb : stringBuilders) {
+            stableNameHash.append(fixedSizeStringHash(sb.toString()));
+        }
+
+        return stableNameHash.toString();
     }
 
     /**
@@ -285,7 +296,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
             stableName.append(getQualifiedSignature(method));
         }
 
-        name += stableLambdaNameHashed(stableName.toString());
+        name += stableLambdaNameHash(stableName.toString());
 
         return name;
     }

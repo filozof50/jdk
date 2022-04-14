@@ -1,3 +1,39 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+/**
+ * @test
+ * @summary Test if the names of the lambda classes are stable when -Djdk.internal.lambda.stableLambdaName
+ *          flag is set to true. This test directly calls java.lang.invoke.LambdaMetafactory#altMetafactory
+ *          method to create multilple lambda instances and then checks their names stability. We created a
+ *          multidimensional space of possible values for each parameter that java.lang.invoke.LambdaMetafactory#altMetafactory
+ *          takes and then search that space by combining different values of those parameters. There is a rule we have to follow:
+ *              - Alternative methods of the specific method must have the same signature with difference in parameter types
+ *                as long as the parameter of the alternative method is the superclass type of the type of corresponding parameter in
+ *                original method
+ * @run main/othervm -Djdk.internal.lambda.stableLambdaName=true TestStableLambdaName
+ */
+
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -14,6 +50,11 @@ import java.util.function.Supplier;
 public class TestStableLambdaName {
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
+    // Different types of lambda classes based on value of flags parameter in the
+    // java.lang.invoke.LambdaMetafactory#altMetafactory.
+    // java.lang.invoke.LambdaMetafactory#altMetafactory uses bitwise and with this
+    // parameter and predefined values to determine if lambda is serializable, has
+    // altMethods and altInterfaces etc.
     private enum lambdaType {
         NOT_SERIALIZABLE_NO_ALT_METHODS_NO_ALT_INTERFACES (0),
         SERIALIZABLE_ONLY (1),
@@ -29,12 +70,16 @@ public class TestStableLambdaName {
             index = i;
         }
     }
+
     private static final String[] interfaceMethods = new String[]{"accept", "consume", "apply", "supply", "get", "test", "getAsBoolean"};
     private static final Class<?>[] interfaces = new Class<?>[]{Consumer.class, Function.class, Predicate.class, Supplier.class, BooleanSupplier.class};
+    // List of method types for defined methods
     private static final MethodType[] methodTypes = new MethodType[]{MethodType.methodType(String.class, Integer.class), MethodType.methodType(Throwable.class, AssertionError.class)};
     private static MethodHandle[] methodHandles;
     private static final Class<?>[] altInterfaces = new Class<?>[]{Cloneable.class, Remote.class};
+    // Alternative methods that corresponds to method1
     private static final MethodType[] altMethodsMethod1 = new MethodType[]{MethodType.methodType(String.class, Number.class)};
+    // Alternative methods that corresponds to method2
     private static final MethodType[] altMethodsMethod2 = new MethodType[]{MethodType.methodType(Throwable.class, Error.class), MethodType.methodType(Throwable.class, Throwable.class)};
     private static Object lambda;
     private static int numOfCreatedLambdas;
@@ -245,10 +290,12 @@ public class TestStableLambdaName {
         Set<String> lambdaClassStableNamesTest = new HashSet<>();
         createLambdasWithDifferentParameters(lambdaClassStableNamesTest);
 
-        assert lambdaClassStableNamesTest.size() == numOfCreatedLambdas / 2;
+        if (lambdaClassStableNames.size() != lambdaClassStableNamesTest.size()) {
+            throw new RuntimeException("Same number of different names must be created in the name creation run and the test run");
+        }
 
-        assert lambdaClassStableNames.size() == lambdaClassStableNamesTest.size();
-
-        assert lambdaClassStableNamesTest.containsAll(lambdaClassStableNames);
+        if (!lambdaClassStableNamesTest.containsAll(lambdaClassStableNames)) {
+            throw new RuntimeException("Same stable names must be created in the name creation run and the test run");
+        }
     }
 }
