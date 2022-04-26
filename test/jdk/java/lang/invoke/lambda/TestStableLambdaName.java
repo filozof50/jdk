@@ -50,11 +50,12 @@ import java.util.function.Supplier;
 public class TestStableLambdaName {
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-    // Different types of lambda classes based on value of flags parameter in the
-    // java.lang.invoke.LambdaMetafactory#altMetafactory.
-    // java.lang.invoke.LambdaMetafactory#altMetafactory uses bitwise and with this
-    // parameter and predefined values to determine if lambda is serializable, has
-    // altMethods and altInterfaces etc.
+    /* Different types of lambda classes based on value of flags parameter in the
+     * java.lang.invoke.LambdaMetafactory#altMetafactory.
+     * java.lang.invoke.LambdaMetafactory#altMetafactory uses bitwise and with this
+     * parameter and predefined values to determine if lambda is serializable, has
+     * altMethods and altInterfaces etc.
+     */
     private enum lambdaType {
         NOT_SERIALIZABLE_NO_ALT_METHODS_NO_ALT_INTERFACES (0),
         SERIALIZABLE_ONLY (1),
@@ -82,7 +83,6 @@ public class TestStableLambdaName {
     // Alternative methods that corresponds to method2
     private static final MethodType[] altMethodsMethod2 = new MethodType[]{MethodType.methodType(Throwable.class, Error.class), MethodType.methodType(Throwable.class, Throwable.class)};
     private static Object lambda;
-    private static int numOfCreatedLambdas;
 
     private static String method1(Number number) {
         return String.valueOf(number);
@@ -113,7 +113,6 @@ public class TestStableLambdaName {
                     lambda = LambdaMetafactory.altMetafactory(lookup, interfaceMethod, MethodType.methodType(interfaceClass),
                             methodTypes[i], methodHandles[i], methodTypes[i], flags).getTarget().invoke();
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    numOfCreatedLambdas++;
                 }
             }
         }
@@ -139,12 +138,10 @@ public class TestStableLambdaName {
                     for (Class<?> altInterface : altInterfaces) {
                         lambda = lambdaWithOneAltInterface(interfaceMethod, interfaceClass, methodTypes[i], methodHandles[i], flags, altInterface);
                         lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                        numOfCreatedLambdas++;
                     }
 
                     lambda = lambdaWithMultipleAltInterfaces(interfaceMethod, interfaceClass, methodTypes[i], methodHandles[i], flags);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    numOfCreatedLambdas++;
                 }
             }
         }
@@ -176,13 +173,11 @@ public class TestStableLambdaName {
                 lambda = lambdaWithOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithOneAltMethod], methodHandles[indexOfMethodWithOneAltMethod],
                         flags, altMethodsMethod1[altMethodIndex]);
                 lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                numOfCreatedLambdas++;
 
                 for (MethodType altMethod : altMethodsMethod2) {
                     lambda = lambdaWithOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithTwoAltMethods], methodHandles[indexOfMethodWithTwoAltMethods],
                             flags, altMethod);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    numOfCreatedLambdas++;
                 }
 
                 lambda = lambdaWithMultipleAltMethods(interfaceMethod, interfaceClass, flags);
@@ -232,21 +227,17 @@ public class TestStableLambdaName {
                     lambda = lambdaWithOneAltInterfaceAndOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithOneAltMethod], methodHandles[indexOfMethodWithOneAltMethod], flags,
                             altInterface, altMethodsMethod1[altMethodIndex]);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    numOfCreatedLambdas++;
                     lambda = lambdaWithOneAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags, altInterface);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    numOfCreatedLambdas++;
 
                     for (MethodType altMethod : altMethodsMethod2) {
                         lambda = lambdaWithOneAltInterfaceAndOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithTwoAltMethods], methodHandles[indexOfMethodWithTwoAltMethods], flags,
                                 altInterface, altMethod);
                         lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                        numOfCreatedLambdas++;
                     }
                 }
                 lambda = lambdaWithMultipleAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags);
                 lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                numOfCreatedLambdas++;
             }
         }
     }
@@ -278,7 +269,6 @@ public class TestStableLambdaName {
     }
 
     public static void main(String[] args) throws Throwable {
-        numOfCreatedLambdas = 0;
         MethodType methodTypeForMethod1 = methodTypes[0];
         MethodType methodTypeForMethod2 = methodTypes[1];
         methodHandles = new MethodHandle[]{lookup.findStatic(TestStableLambdaName.class, "method1", methodTypeForMethod1),

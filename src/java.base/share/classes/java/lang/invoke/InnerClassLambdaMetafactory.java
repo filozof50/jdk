@@ -112,7 +112,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         stableLambdaName = GetBooleanAction.privilegedGetProperty(stableLambdaNameKey);
 
         targetLengthForStableName = Long.toString(Long.MAX_VALUE, Character.MAX_RADIX).length();
-        
+
         // condy to load implMethod from class data
         MethodType classDataMType = methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class);
         Handle classDataBsm = new Handle(H_INVOKESTATIC, Type.getInternalName(MethodHandles.class), "classData",
@@ -227,7 +227,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
 
     /**
      * Calculate hash value of the given String in the same manner as the
-     * @see java.lang.StringUTF16#hashCode does with difference that hash value
+     * java.lang.StringUTF16#hashCode does with difference that hash value
      * is long instead of int.
      *
      * @param name String for which method calculates hash value for
@@ -235,7 +235,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
      * @return a hash value for the given String
      * */
     private String fixedSizeStringHash(String name) {
-        char appendingCharacter = 'a';
+        final char paddingCharacter = 'a';
         long h = 0;
         int length = name.length();
         for (int i = 0; i < length; i++) {
@@ -245,10 +245,10 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         StringBuilder stable = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
         int stableLength = stable.length();
 
-        // We need to pad stable lambda name to the fixed size, so we append predefined character to the end of the stable name if needed.
-        // This does not affect stability of the name, just it's length. We want all the hashed names to be of the same length.
+        // We want all the hashed names to be of the same length. We pad some of them with the character 'a'
+        // to achieve this.
         while (stableLength != targetLengthForStableName) {
-            stable.append(appendingCharacter);
+            stable.append(paddingCharacter);
             stableLength++;
         }
 
@@ -256,15 +256,15 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     }
 
     private String stableLambdaNameHash(String name) {
-        StringBuilder []stringBuilders = new StringBuilder[]{new StringBuilder(), new StringBuilder()};
+        StringBuilder[] hashFragments = new StringBuilder[]{new StringBuilder(), new StringBuilder()};
         int n = name.length();
 
         for (int i = 0; i < n; i++) {
-            stringBuilders[i % stringBuilders.length].append(name.charAt(i));
+            hashFragments[i % hashFragments.length].append(name.charAt(i));
         }
 
         StringBuilder stableNameHash = new StringBuilder();
-        for (StringBuilder sb : stringBuilders) {
+        for (StringBuilder sb : hashFragments) {
             stableNameHash.append(fixedSizeStringHash(sb.toString()));
         }
 
@@ -273,11 +273,11 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
 
     /**
      * Creating stable name for lambda class.
-     * Parameters that are used to create stable name are the same ones that are used in
+     * Parameters that are used to create stable name
+     * are a superset of the parameters that are used in
      * @see java.lang.invoke.LambdaProxyClassArchive#addToArchive to store lambdas.
      *
      * @return a stable name for the created lambda class.
-     *
      */
     private String stableLambdaClassName(Class<?> targetClass) {
         String name = createNameFromTargetClass(targetClass);
