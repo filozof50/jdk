@@ -94,6 +94,8 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
 
     private static final boolean disableEagerInitialization;
     private static final boolean stableLambdaName;
+    private static final char paddingCharacter = 'a';
+
 
     private static final int targetLengthForStableName;
 
@@ -235,7 +237,6 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
      * @return a hash value for the given String
      * */
     private String fixedSizeStringHash(String name) {
-        final char paddingCharacter = 'a';
         long h = 0;
         int length = name.length();
         for (int i = 0; i < length; i++) {

@@ -76,13 +76,11 @@ public class TestStableLambdaName {
     private static final Class<?>[] interfaces = new Class<?>[]{Consumer.class, Function.class, Predicate.class, Supplier.class, BooleanSupplier.class};
     // List of method types for defined methods
     private static final MethodType[] methodTypes = new MethodType[]{MethodType.methodType(String.class, Integer.class), MethodType.methodType(Throwable.class, AssertionError.class)};
-    private static MethodHandle[] methodHandles;
     private static final Class<?>[] altInterfaces = new Class<?>[]{Cloneable.class, Remote.class};
     // Alternative methods that corresponds to method1
     private static final MethodType[] altMethodsMethod1 = new MethodType[]{MethodType.methodType(String.class, Number.class)};
     // Alternative methods that corresponds to method2
     private static final MethodType[] altMethodsMethod2 = new MethodType[]{MethodType.methodType(Throwable.class, Error.class), MethodType.methodType(Throwable.class, Throwable.class)};
-    private static Object lambda;
 
     private static String method1(Number number) {
         return String.valueOf(number);
@@ -106,11 +104,11 @@ public class TestStableLambdaName {
         return name.substring(0, name.indexOf("/0x0"));
     }
 
-    private static void createPlainLambdas(Set<String> lambdaNames, int flags) throws Throwable {
+    private static void createPlainLambdas(Set<String> lambdaNames, int flags, MethodHandle[] methodHandles) throws Throwable {
         for (String interfaceMethod : interfaceMethods) {
             for (Class<?> interfaceClass : interfaces) {
                 for (int i = 0; i < methodTypes.length; i++) {
-                    lambda = LambdaMetafactory.altMetafactory(lookup, interfaceMethod, MethodType.methodType(interfaceClass),
+                    Object lambda = LambdaMetafactory.altMetafactory(lookup, interfaceMethod, MethodType.methodType(interfaceClass),
                             methodTypes[i], methodHandles[i], methodTypes[i], flags).getTarget().invoke();
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
                 }
@@ -131,7 +129,8 @@ public class TestStableLambdaName {
                 methodType, methodHandle, methodType, flags, numOfAltInterfaces, altInterfaces[altInterfacesIndex++], altInterfaces[altInterfacesIndex]).getTarget().invoke();
     }
 
-    private static void createLambdasWithAltInterfaces(Set<String> lambdaNames, int flags) throws Throwable {
+    private static void createLambdasWithAltInterfaces(Set<String> lambdaNames, int flags, MethodHandle[] methodHandles) throws Throwable {
+        Object lambda;
         for (String interfaceMethod : interfaceMethods) {
             for (Class<?> interfaceClass : interfaces) {
                 for (int i = 0; i < methodTypes.length; i++) {
@@ -148,13 +147,13 @@ public class TestStableLambdaName {
     }
 
     private static Object lambdaWithOneAltMethod(String interfaceMethod, Class<?> interfaceClass,  MethodType methodType, MethodHandle methodHandle,
-                                                 int flags, MethodType altMethod) throws Throwable {
+                                                 int flags, MethodType altMethod, MethodHandle[] methodHandles) throws Throwable {
         int numOfAltMethods = 1;
         return LambdaMetafactory.altMetafactory(lookup, interfaceMethod, MethodType.methodType(interfaceClass),
                 methodType, methodHandle, methodType, flags, numOfAltMethods, altMethod).getTarget().invoke();
     }
 
-    private static Object lambdaWithMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags) throws Throwable {
+    private static Object lambdaWithMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags, MethodHandle[] methodHandles) throws Throwable {
         int numOfAltMethods = 2;
         int indexOfAltMethod = 0;
         MethodType methodTypeMethod2 = methodTypes[1];
@@ -164,23 +163,24 @@ public class TestStableLambdaName {
                 altMethodsMethod2[indexOfAltMethod]).getTarget().invoke();
     }
 
-    private static void createLambdasWithAltMethods(Set<String> lambdaNames, int flags) throws Throwable {
+    private static void createLambdasWithAltMethods(Set<String> lambdaNames, int flags, MethodHandle[] methodHandles) throws Throwable {
         int indexOfMethodWithOneAltMethod = 0;
         int indexOfMethodWithTwoAltMethods = 1;
         int altMethodIndex = 0;
+        Object lambda;
         for (String interfaceMethod : interfaceMethods) {
             for (Class<?> interfaceClass : interfaces) {
                 lambda = lambdaWithOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithOneAltMethod], methodHandles[indexOfMethodWithOneAltMethod],
-                        flags, altMethodsMethod1[altMethodIndex]);
+                        flags, altMethodsMethod1[altMethodIndex], methodHandles);
                 lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
 
                 for (MethodType altMethod : altMethodsMethod2) {
                     lambda = lambdaWithOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithTwoAltMethods], methodHandles[indexOfMethodWithTwoAltMethods],
-                            flags, altMethod);
+                            flags, altMethod, methodHandles);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
                 }
 
-                lambda = lambdaWithMultipleAltMethods(interfaceMethod, interfaceClass, flags);
+                lambda = lambdaWithMultipleAltMethods(interfaceMethod, interfaceClass, flags, methodHandles);
             }
         }
     }
@@ -193,7 +193,8 @@ public class TestStableLambdaName {
                 methodType, methodHandle, methodType, flags, numOfAltInterfaces, altInterface, numOfAltMethods, altMethod).getTarget().invoke();
     }
 
-    private static Object lambdaWithOneAltInterfaceAndMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags, Class<?> altInterface) throws Throwable {
+    private static Object lambdaWithOneAltInterfaceAndMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags, Class<?> altInterface,
+                                                                         MethodHandle[] methodHandles) throws Throwable {
         int numOfAltInterfaces = 1;
         int numOfAltMethods = 2;
         int indexOfAltMethod = 0;
@@ -205,7 +206,7 @@ public class TestStableLambdaName {
                 altMethodsMethod2[indexOfAltMethod]).getTarget().invoke();
     }
 
-    private static Object lambdaWithMultipleAltInterfaceAndMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags) throws Throwable {
+    private static Object lambdaWithMultipleAltInterfaceAndMultipleAltMethods(String interfaceMethod, Class<?> interfaceClass, int flags, MethodHandle[] methodHandles) throws Throwable {
         int numOfAltInterfaces = 2;
         int numOfAltMethods = 2;
         int indexOfAltInterface = 0;
@@ -217,17 +218,19 @@ public class TestStableLambdaName {
                 flags, numOfAltInterfaces, altInterfaces[indexOfAltInterface++], altInterfaces[indexOfAltInterface], numOfAltMethods, altMethodsMethod2[indexOfAltMethod++],
                 altMethodsMethod2[indexOfAltMethod]).getTarget().invoke();
     }
-    private static void createLambdasWithAltInterfacesAndAltMethods(Set<String> lambdaNames, int flags) throws Throwable {
+    private static void createLambdasWithAltInterfacesAndAltMethods(Set<String> lambdaNames, int flags, MethodHandle[] methodHandles) throws Throwable {
         int indexOfMethodWithOneAltMethod = 0;
         int indexOfMethodWithTwoAltMethods = 1;
         int altMethodIndex = 0;
+        Object lambda;
+
         for (String interfaceMethod : interfaceMethods) {
             for (Class<?> interfaceClass : interfaces) {
                 for (Class<?> altInterface : altInterfaces) {
                     lambda = lambdaWithOneAltInterfaceAndOneAltMethod(interfaceMethod, interfaceClass, methodTypes[indexOfMethodWithOneAltMethod], methodHandles[indexOfMethodWithOneAltMethod], flags,
                             altInterface, altMethodsMethod1[altMethodIndex]);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
-                    lambda = lambdaWithOneAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags, altInterface);
+                    lambda = lambdaWithOneAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags, altInterface, methodHandles);
                     lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
 
                     for (MethodType altMethod : altMethodsMethod2) {
@@ -236,56 +239,57 @@ public class TestStableLambdaName {
                         lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
                     }
                 }
-                lambda = lambdaWithMultipleAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags);
+                lambda = lambdaWithMultipleAltInterfaceAndMultipleAltMethods(interfaceMethod, interfaceClass, flags, methodHandles);
                 lambdaNames.add(removeHashFromLambdaName(lambda.getClass().getName()));
             }
         }
     }
 
-    private static void createLambdasWithDifferentParameters(Set<String> lambdaNames) throws Throwable {
+    private static void createLambdasWithDifferentParameters(Set<String> lambdaNames, MethodHandle[] methodHandles) throws Throwable {
         // All lambdas with flags 0
-        createPlainLambdas(lambdaNames, lambdaType.NOT_SERIALIZABLE_NO_ALT_METHODS_NO_ALT_INTERFACES.index);
+        createPlainLambdas(lambdaNames, lambdaType.NOT_SERIALIZABLE_NO_ALT_METHODS_NO_ALT_INTERFACES.index, methodHandles);
 
         // All lambdas with flags 1
-        createPlainLambdas(lambdaNames, lambdaType.SERIALIZABLE_ONLY.index);
+        createPlainLambdas(lambdaNames, lambdaType.SERIALIZABLE_ONLY.index, methodHandles);
 
         // All lambdas with flags 2
-        createLambdasWithAltInterfaces(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_INTERFACES.index);
+        createLambdasWithAltInterfaces(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_INTERFACES.index, methodHandles);
 
         // All lambdas with flags 3
-        createLambdasWithAltInterfaces(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_INTERFACES.index);
+        createLambdasWithAltInterfaces(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_INTERFACES.index, methodHandles);
 
         // All lambdas with flags 4
-        createLambdasWithAltMethods(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_METHODS.index);
+        createLambdasWithAltMethods(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_METHODS.index, methodHandles);
 
         // All lambdas with flags 5
-        createLambdasWithAltMethods(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_METHODS.index);
+        createLambdasWithAltMethods(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_METHODS.index, methodHandles);
 
         // All lambdas with flags 6
-        createLambdasWithAltInterfacesAndAltMethods(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_METHODS_HAS_ALT_INTERFACES.index);
+        createLambdasWithAltInterfacesAndAltMethods(lambdaNames, lambdaType.NOT_SERIALIZABLE_HAS_ALT_METHODS_HAS_ALT_INTERFACES.index, methodHandles);
 
         // All lambdas with flags 7
-        createLambdasWithAltInterfacesAndAltMethods(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_METHODS_HAS_ALT_INTERFACES.index);
+        createLambdasWithAltInterfacesAndAltMethods(lambdaNames, lambdaType.SERIALIZABLE_HAS_ALT_METHODS_HAS_ALT_INTERFACES.index, methodHandles);
     }
 
     public static void main(String[] args) throws Throwable {
         MethodType methodTypeForMethod1 = methodTypes[0];
         MethodType methodTypeForMethod2 = methodTypes[1];
-        methodHandles = new MethodHandle[]{lookup.findStatic(TestStableLambdaName.class, "method1", methodTypeForMethod1),
+        MethodHandle[] methodHandles = new MethodHandle[]{lookup.findStatic(TestStableLambdaName.class, "method1", methodTypeForMethod1),
                 lookup.findStatic(TestStableLambdaName.class, "method2", methodTypeForMethod2)};
 
         Set<String> lambdaClassStableNames = new HashSet<>();
-        createLambdasWithDifferentParameters(lambdaClassStableNames);
+        createLambdasWithDifferentParameters(lambdaClassStableNames, methodHandles);
 
         Set<String> lambdaClassStableNamesTest = new HashSet<>();
-        createLambdasWithDifferentParameters(lambdaClassStableNamesTest);
+        createLambdasWithDifferentParameters(lambdaClassStableNamesTest, methodHandles);
 
         if (lambdaClassStableNames.size() != lambdaClassStableNamesTest.size()) {
-            throw new RuntimeException("Same number of different names must be created in the name creation run and the test run");
+            throw new RuntimeException(lambdaClassStableNames.size() + " names was created during name creation run, but " + lambdaClassStableNamesTest.size() + " names were created during test run. " +
+                    "Number of created names must be the same.");
         }
 
         if (!lambdaClassStableNamesTest.containsAll(lambdaClassStableNames)) {
-            throw new RuntimeException("Same stable names must be created in the name creation run and the test run");
+            throw new RuntimeException("Different names for lambda classes were created during name creation run and test run. All the created names in both runs must be the same.");
         }
     }
 }
