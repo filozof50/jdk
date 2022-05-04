@@ -26,11 +26,12 @@
  * @summary Test if the names of the lambda classes are stable when -Djdk.internal.lambda.stableLambdaName
  *          flag is set to true. This test directly calls java.lang.invoke.LambdaMetafactory#altMetafactory
  *          method to create multilple lambda instances and then checks their names stability. We created a
- *          multidimensional space of possible values for each parameter that java.lang.invoke.LambdaMetafactory#altMetafactory
- *          takes and then search that space by combining different values of those parameters. There is a rule we have to follow:
- *              - Alternative methods of the specific method must have the same signature with difference in parameter types
- *                as long as the parameter of the alternative method is the superclass type of the type of corresponding parameter in
- *                original method
+ *          multidimensional space of possible values for each parameter that
+ *          {@link java.lang.invoke.LambdaMetafactory#altMetafactory} takes and then search that space by combining
+ *          different values of those parameters. There is a rule we have to follow:
+ *          Alternative methods of the specific method must have the same signature with difference in parameter types
+ *          as long as the parameter of the alternative method is the superclass type of the type of corresponding parameter in
+ *          original method
  * @run main/othervm -Djdk.internal.lambda.stableLambdaName=true TestStableLambdaName
  */
 

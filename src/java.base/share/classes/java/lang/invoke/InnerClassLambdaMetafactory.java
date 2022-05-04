@@ -276,7 +276,8 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
      * Creating stable name for lambda class.
      * Parameters that are used to create stable name
      * are a superset of the parameters that are used in
-     * @see java.lang.invoke.LambdaProxyClassArchive#addToArchive to store lambdas.
+     * {@link java.lang.invoke.LambdaProxyClassArchive#addToArchive}
+     * to store lambdas.
      *
      * @return a stable name for the created lambda class.
      */
