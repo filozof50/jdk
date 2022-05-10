@@ -97,6 +97,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     private static final char paddingCharacter = 'a';
 
 
+    // Length of a single hash contained in the stable lambda name
     private static final int stableLambdaNameHashLength;
 
     // condy to load implMethod from class data
@@ -246,8 +247,8 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         StringBuilder hash = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
         int hashLength = hash.length();
 
-        // We want all the hashed names to be of the same length. We pad some of them with the character 'a'
-        // to achieve this.
+        // As all the hashes contained in the stable lambda names should
+        // be of the same length, we pad some of them with the character 'a'.
         while (hashLength != stableLambdaNameHashLength) {
             hash.append(paddingCharacter);
             hashLength++;
