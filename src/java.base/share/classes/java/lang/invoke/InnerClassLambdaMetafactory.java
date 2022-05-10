@@ -93,11 +93,11 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     private static final ProxyClassesDumper dumper;
 
     private static final boolean disableEagerInitialization;
-    private static final boolean stableLambdaName;
+    private static final boolean generateStableLambdaNames;
     private static final char paddingCharacter = 'a';
 
 
-    private static final int targetLengthForStableName;
+    private static final int stableLambdaNameHashLength;
 
     // condy to load implMethod from class data
     private static final ConstantDynamic implMethodCondy;
@@ -110,10 +110,10 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         final String disableEagerInitializationKey = "jdk.internal.lambda.disableEagerInitialization";
         disableEagerInitialization = GetBooleanAction.privilegedGetProperty(disableEagerInitializationKey);
 
-        final String stableLambdaNameKey = "jdk.internal.lambda.stableLambdaName";
-        stableLambdaName = GetBooleanAction.privilegedGetProperty(stableLambdaNameKey);
+        final String generateStableLambdaNameKey = "jdk.internal.lambda.generateStableLambdaNames";
+        generateStableLambdaNames = GetBooleanAction.privilegedGetProperty(generateStableLambdaNameKey);
 
-        targetLengthForStableName = Long.toString(Long.MAX_VALUE, Character.MAX_RADIX).length();
+        stableLambdaNameHashLength = Long.toString(Long.MAX_VALUE, Character.MAX_RADIX).length();
 
         // condy to load implMethod from class data
         MethodType classDataMType = methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class);
@@ -190,7 +190,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         implMethodName = implInfo.getName();
         implMethodDesc = implInfo.getMethodType().toMethodDescriptorString();
         constructorType = factoryType.changeReturnType(Void.TYPE);
-        lambdaClassName = stableLambdaName ? stableLambdaClassName(targetClass) : lambdaClassName(targetClass);
+        lambdaClassName = generateStableLambdaNames ? stableLambdaClassName(targetClass) : lambdaClassName(targetClass);
         // If the target class invokes a protected method inherited from a
         // superclass in a different package, or does 'invokespecial', the
         // lambda class has no access to the resolved method. Instead, we need
@@ -243,17 +243,17 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
             h = 31 * h + name.charAt(i);
         }
 
-        StringBuilder stable = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
-        int stableLength = stable.length();
+        StringBuilder hash = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
+        int hashLength = hash.length();
 
         // We want all the hashed names to be of the same length. We pad some of them with the character 'a'
         // to achieve this.
-        while (stableLength != targetLengthForStableName) {
-            stable.append(paddingCharacter);
-            stableLength++;
+        while (hashLength != stableLambdaNameHashLength) {
+            hash.append(paddingCharacter);
+            hashLength++;
         }
 
-        return stable.toString();
+        return hash.toString();
     }
 
     private String stableLambdaNameHash(String name) {
@@ -284,21 +284,21 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
     private String stableLambdaClassName(Class<?> targetClass) {
         String name = createNameFromTargetClass(targetClass);
 
-        StringBuilder stableName = new StringBuilder().append(interfaceMethodName);
-        stableName.append(getQualifiedSignature(factoryType));
-        stableName.append(getQualifiedSignature(interfaceMethodType));
-        stableName.append(implementation.internalMemberName().toString());
-        stableName.append(getQualifiedSignature(dynamicMethodType));
+        StringBuilder hashData = new StringBuilder().append(interfaceMethodName);
+        hashData.append(getQualifiedSignature(factoryType));
+        hashData.append(getQualifiedSignature(interfaceMethodType));
+        hashData.append(implementation.internalMemberName().toString());
+        hashData.append(getQualifiedSignature(dynamicMethodType));
 
         for (Class<?> clazz : altInterfaces) {
-            stableName.append(clazz.getName());
+            hashData.append(clazz.getName());
         }
 
         for (MethodType method : altMethods) {
-            stableName.append(getQualifiedSignature(method));
+            hashData.append(getQualifiedSignature(method));
         }
 
-        name += stableLambdaNameHash(stableName.toString());
+        name += stableLambdaNameHash(hashData.toString());
 
         return name;
     }
