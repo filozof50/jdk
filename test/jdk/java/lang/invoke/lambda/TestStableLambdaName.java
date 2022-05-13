@@ -23,7 +23,7 @@
 
 /**
  * @test
- * @summary Test if the names of the lambda classes are stable when -Djdk.internal.lambda.stableLambdaName
+ * @summary Test if the names of the lambda classes are stable when {@code -Djdk.internal.lambda.stableLambdaName}
  *          flag is set to true. This test directly calls java.lang.invoke.LambdaMetafactory#altMetafactory
  *          method to create multilple lambda instances and then checks their names stability. We created a
  *          multidimensional space of possible values for each parameter that

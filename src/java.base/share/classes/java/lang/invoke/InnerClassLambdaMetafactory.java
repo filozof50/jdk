@@ -114,7 +114,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         final String generateStableLambdaNameKey = "jdk.internal.lambda.generateStableLambdaNames";
         generateStableLambdaNames = GetBooleanAction.privilegedGetProperty(generateStableLambdaNameKey);
 
-        stableLambdaNameHashLength = Long.toString(Long.MAX_VALUE, Character.MAX_RADIX).length();
+        stableLambdaNameHashLength = hashValueString(Long.MAX_VALUE).length();
 
         // condy to load implMethod from class data
         MethodType classDataMType = methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class);
@@ -228,9 +228,12 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
         return name.replace('.', '/') + "$$Lambda$";
     }
 
+    private static String hashValueString(long hashValue) {
+        return Long.toString(hashValue, Character.MAX_RADIX);
+    }
     /**
      * Calculate hash value of the given String in the same manner as the
-     * java.lang.StringUTF16#hashCode does with difference that hash value
+     * java.lang.StringUTF16#hashCode does, except that hash value
      * is long instead of int.
      *
      * @param name String for which method calculates hash value for
@@ -244,11 +247,12 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
             h = 31 * h + name.charAt(i);
         }
 
-        StringBuilder hash = new StringBuilder(Long.toString(Math.abs(h), Character.MAX_RADIX));
+        StringBuilder hash = new StringBuilder(hashValueString(Math.abs(h)));
         int hashLength = hash.length();
 
         // As all the hashes contained in the stable lambda names should
-        // be of the same length, we pad some of them with the character 'a'.
+        // be of the same length, we pad some of them with the special
+        // character '#' which is never part of the hash value.
         while (hashLength != stableLambdaNameHashLength) {
             hash.append(paddingCharacter);
             hashLength++;
